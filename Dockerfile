@@ -1,4 +1,4 @@
-FROM php:8.2-cli-bookworm AS php-build
+FROM php:8.4-cli-bookworm AS php-build
 
 WORKDIR /var/www/html
 
