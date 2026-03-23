@@ -38,6 +38,10 @@ until php artisan migrate --force; do
   sleep 5
 done
 
+if [[ -n "${ADMIN_EMAIL:-}" && -n "${ADMIN_PASSWORD:-}" ]]; then
+  php artisan db:seed --class="Database\\Seeders\\EnsureAdminUserSeeder" --force
+fi
+
 php artisan config:cache
 
 if [[ "${RUN_SCHEDULER:-true}" == "true" ]]; then
