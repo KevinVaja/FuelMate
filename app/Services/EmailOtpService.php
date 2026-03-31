@@ -3,10 +3,12 @@
 namespace App\Services;
 
 use App\EmailOtpCodeMail;
+use DomainException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Throwable;
 
 class EmailOtpService
 {
@@ -37,14 +39,22 @@ class EmailOtpService
 
         $request->session()->forget($this->verifiedKey($purpose));
 
-        Mail::to($normalizedEmail)->send(
-            new EmailOtpCodeMail(
-                code: $code,
-                purposeLabel: $purposeLabel,
-                ttlMinutes: $ttlMinutes,
-                recipientName: $recipientName,
-            )
-        );
+        try {
+            Mail::to($normalizedEmail)->send(
+                new EmailOtpCodeMail(
+                    code: $code,
+                    purposeLabel: $purposeLabel,
+                    ttlMinutes: $ttlMinutes,
+                    recipientName: $recipientName,
+                )
+            );
+        } catch (Throwable $exception) {
+            report($exception);
+
+            throw new DomainException(
+                'We could not send the email right now. Please check your internet connection and try again.'
+            );
+        }
     }
 
     public function verifyCode(Request $request, string $purpose, string $email, string $otp): array

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\EmailOtpService;
+use DomainException;
 use Illuminate\Http\Request;
 
 class FuelRequestController extends Controller
@@ -13,14 +14,21 @@ class FuelRequestController extends Controller
     {
         $user = $request->user();
 
-        $emailOtpService->sendCode(
-            $request,
-            EmailOtpService::PURPOSE_ORDER,
-            (string) $user->email,
-            'order confirmation',
-            self::OTP_TTL_MINUTES,
-            (string) $user->name,
-        );
+        try {
+            $emailOtpService->sendCode(
+                $request,
+                EmailOtpService::PURPOSE_ORDER,
+                (string) $user->email,
+                'order confirmation',
+                self::OTP_TTL_MINUTES,
+                (string) $user->name,
+            );
+        } catch (DomainException $exception) {
+            return response()->json([
+                'status' => false,
+                'message' => $exception->getMessage(),
+            ], 503);
+        }
 
         return response()->json([
             'status' => true,

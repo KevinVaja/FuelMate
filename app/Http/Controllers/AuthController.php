@@ -6,6 +6,7 @@ use App\Http\Requests\RegisterAccountRequest;
 use App\Models\Agent;
 use App\Models\User;
 use App\Services\EmailOtpService;
+use DomainException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -103,13 +104,20 @@ class AuthController extends Controller
             'email' => 'required|email|unique:users,email',
         ]);
 
-        $emailOtpService->sendCode(
-            $request,
-            EmailOtpService::PURPOSE_REGISTRATION,
-            $data['email'],
-            'registration',
-            self::REGISTRATION_OTP_TTL_MINUTES,
-        );
+        try {
+            $emailOtpService->sendCode(
+                $request,
+                EmailOtpService::PURPOSE_REGISTRATION,
+                $data['email'],
+                'registration',
+                self::REGISTRATION_OTP_TTL_MINUTES,
+            );
+        } catch (DomainException $exception) {
+            return response()->json([
+                'status' => false,
+                'message' => $exception->getMessage(),
+            ], 503);
+        }
 
         return response()->json([
             'status' => true,
