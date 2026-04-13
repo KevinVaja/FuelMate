@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const otpSection = document.getElementById('registrationOtpSection');
   const emailStatus = document.getElementById('registrationEmailStatus');
   const submitButton = document.getElementById('registerSubmitBtn');
-  const csrfToken = '{{ csrf_token() }}';
+  const fallbackCsrfToken = '{{ csrf_token() }}';
 
   let emailVerified = @json($emailAlreadyVerified);
   let otpRequestInFlight = false;
@@ -132,6 +132,18 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       return null;
     }
+  };
+
+  const getXsrfToken = () => {
+    const cookie = document.cookie
+      .split('; ')
+      .find((entry) => entry.startsWith('XSRF-TOKEN='));
+
+    if (!cookie) {
+      return fallbackCsrfToken;
+    }
+
+    return decodeURIComponent(cookie.substring('XSRF-TOKEN='.length));
   };
 
   const normalizedEmail = () => emailInput.value.trim().toLowerCase();
@@ -173,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'X-CSRF-TOKEN': csrfToken,
+          'X-XSRF-TOKEN': getXsrfToken(),
         },
         body: JSON.stringify({
           email: emailInput.value.trim(),
@@ -224,7 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'X-CSRF-TOKEN': csrfToken,
+          'X-XSRF-TOKEN': getXsrfToken(),
         },
         body: JSON.stringify({
           email: emailInput.value.trim(),

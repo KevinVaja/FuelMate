@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const estimateGstAmount = document.getElementById('estimateGstAmount');
   const estimateDistance = document.getElementById('estimateDistance');
   const estimateTotalAmount = document.getElementById('estimateTotalAmount');
-  const csrfToken = '{{ csrf_token() }}';
+  const fallbackCsrfToken = '{{ csrf_token() }}';
   const defaultMapCenter = [20.5937, 78.9629];
 
   let map = null;
@@ -306,6 +306,18 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       return null;
     }
+  };
+
+  const getXsrfToken = () => {
+    const cookie = document.cookie
+      .split('; ')
+      .find((entry) => entry.startsWith('XSRF-TOKEN='));
+
+    if (!cookie) {
+      return fallbackCsrfToken;
+    }
+
+    return decodeURIComponent(cookie.substring('XSRF-TOKEN='.length));
   };
 
   const updateHiddenInputs = () => {
@@ -663,7 +675,7 @@ document.addEventListener('DOMContentLoaded', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': csrfToken,
+        'X-XSRF-TOKEN': getXsrfToken(),
         'Accept': 'application/json',
       },
       body: JSON.stringify({}),
@@ -795,7 +807,7 @@ document.addEventListener('DOMContentLoaded', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRF-TOKEN': csrfToken,
+          'X-XSRF-TOKEN': getXsrfToken(),
           'Accept': 'application/json',
         },
         body: JSON.stringify({ otp }),
