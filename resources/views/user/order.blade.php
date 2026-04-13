@@ -659,7 +659,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const sendOtp = async () => {
-    const response = await fetch('{{ route('user.send.otp') }}', {
+    const response = await fetch('{{ route('user.send.otp', [], false) }}', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -791,7 +791,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       setOtpVerifyState(true);
-      const response = await fetch('{{ route('user.verify.otp') }}', {
+      const response = await fetch('{{ route('user.verify.otp', [], false) }}', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

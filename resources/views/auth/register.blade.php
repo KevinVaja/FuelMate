@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
     sendOtpButton.textContent = 'Sending...';
 
     try {
-      const response = await fetch('{{ route('register.email_otp.send') }}', {
+      const response = await fetch('{{ route('register.email_otp.send', [], false) }}', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -219,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
     verifyOtpButton.textContent = 'Verifying...';
 
     try {
-      const response = await fetch('{{ route('register.email_otp.verify') }}', {
+      const response = await fetch('{{ route('register.email_otp.verify', [], false) }}', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
