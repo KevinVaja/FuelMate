@@ -132,4 +132,59 @@ class RegistrationEmailVerificationTest extends TestCase
 
         $this->assertNull(session('email_otp.registration.pending'));
     }
+
+    public function test_registration_otp_send_fails_cleanly_when_resend_is_not_configured(): void
+    {
+        config([
+            'app.env' => 'production',
+            'mail.default' => 'resend',
+            'services.resend.key' => null,
+            'mail.from.address' => null,
+        ]);
+
+        $response = $this->postJson(route('register.email_otp.send'), [
+            'email' => 'mail-check@example.com',
+        ]);
+
+        $response
+            ->assertStatus(503)
+            ->assertJson([
+                'status' => false,
+                'message' => 'Email delivery is not fully configured on the server yet. Set RESEND_API_KEY and MAIL_FROM_ADDRESS on Render, then deploy again.',
+            ]);
+
+        $this->assertNull(session('email_otp.registration.pending'));
+    }
+
+    public function test_registration_otp_send_surfaces_resend_domain_restrictions_cleanly(): void
+    {
+        config([
+            'app.env' => 'production',
+            'mail.default' => 'resend',
+            'services.resend.key' => 're_test_123',
+            'mail.from.address' => 'onboarding@resend.dev',
+        ]);
+
+        Mail::shouldReceive('to')
+            ->once()
+            ->with('mail-check@example.com')
+            ->andReturnSelf();
+
+        Mail::shouldReceive('send')
+            ->once()
+            ->andThrow(new RuntimeException('403 You can only send testing emails to your own email address when using onboarding@resend.dev. Please verify a domain to send to other recipients.'));
+
+        $response = $this->postJson(route('register.email_otp.send'), [
+            'email' => 'mail-check@example.com',
+        ]);
+
+        $response
+            ->assertStatus(503)
+            ->assertJson([
+                'status' => false,
+                'message' => 'Resend is connected, but the sender is not ready for public delivery yet. Use onboarding@resend.dev only for testing to your own email, or verify a domain in Resend and use that address as MAIL_FROM_ADDRESS.',
+            ]);
+
+        $this->assertNull(session('email_otp.registration.pending'));
+    }
 }

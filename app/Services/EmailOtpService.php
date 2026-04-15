@@ -54,7 +54,7 @@ class EmailOtpService
             $request->session()->forget($this->pendingKey($purpose));
             report($exception);
 
-            throw new DomainException($this->smtpFailureMessage($exception));
+            throw new DomainException($this->mailFailureMessage($exception));
         }
     }
 
@@ -226,10 +226,18 @@ class EmailOtpService
             );
         }
 
-        if ($defaultMailer !== 'smtp') {
+        if ($defaultMailer === 'smtp') {
+            $this->ensureSmtpMailerIsReady();
             return;
         }
 
+        if ($defaultMailer === 'resend') {
+            $this->ensureResendMailerIsReady();
+        }
+    }
+
+    private function ensureSmtpMailerIsReady(): void
+    {
         $smtpHost = trim((string) config('mail.mailers.smtp.host'));
         $smtpUsername = trim((string) config('mail.mailers.smtp.username'));
         $smtpPassword = trim((string) config('mail.mailers.smtp.password'));
@@ -249,9 +257,57 @@ class EmailOtpService
         }
     }
 
-    private function smtpFailureMessage(Throwable $exception): string
+    private function ensureResendMailerIsReady(): void
     {
+        $resendApiKey = trim((string) config('services.resend.key'));
+        $fromAddress = trim((string) config('mail.from.address'));
+
+        if (
+            $resendApiKey === ''
+            || $fromAddress === ''
+            || $fromAddress === 'hello@example.com'
+        ) {
+            throw new DomainException(
+                'Email delivery is not fully configured on the server yet. Set RESEND_API_KEY and MAIL_FROM_ADDRESS on Render, then deploy again.'
+            );
+        }
+    }
+
+    private function mailFailureMessage(Throwable $exception): string
+    {
+        $defaultMailer = (string) config('mail.default', 'log');
         $message = Str::lower(trim($exception->getMessage()));
+
+        if ($defaultMailer === 'resend') {
+            if (
+                str_contains($message, '401')
+                || str_contains($message, 'unauthorized')
+                || str_contains($message, 'api key')
+                || str_contains($message, 'authentication')
+            ) {
+                return 'Resend rejected the API key. Check RESEND_API_KEY on Render, then deploy again.';
+            }
+
+            if (
+                str_contains($message, '403')
+                || str_contains($message, 'verify a domain')
+                || str_contains($message, 'testing emails')
+                || str_contains($message, 'onboarding@resend.dev')
+            ) {
+                return 'Resend is connected, but the sender is not ready for public delivery yet. Use onboarding@resend.dev only for testing to your own email, or verify a domain in Resend and use that address as MAIL_FROM_ADDRESS.';
+            }
+
+            if (
+                str_contains($message, 'timed out')
+                || str_contains($message, 'failed to connect')
+                || str_contains($message, 'could not resolve host')
+                || str_contains($message, 'connection refused')
+            ) {
+                return 'The server could not connect to the Resend API right now. Please try again in a moment and check the Render logs if it continues.';
+            }
+
+            return 'The server could not send the email right now. Please check the Render Resend settings and try again.';
+        }
 
         if ($message !== '') {
             if (
