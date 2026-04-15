@@ -182,9 +182,11 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const response = await fetch('{{ route('register.email_otp.send', [], false) }}', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'X-CSRF-TOKEN': fallbackCsrfToken,
           'X-XSRF-TOKEN': getXsrfToken(),
         },
         body: JSON.stringify({
@@ -233,9 +235,11 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const response = await fetch('{{ route('register.email_otp.verify', [], false) }}', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'X-CSRF-TOKEN': fallbackCsrfToken,
           'X-XSRF-TOKEN': getXsrfToken(),
         },
         body: JSON.stringify({

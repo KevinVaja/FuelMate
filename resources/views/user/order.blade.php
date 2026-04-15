@@ -398,6 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const response = await fetch('{{ route('user.order.estimate') }}', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -673,8 +674,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const sendOtp = async () => {
     const response = await fetch('{{ route('user.send.otp', [], false) }}', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': csrfToken,
         'X-XSRF-TOKEN': getXsrfToken(),
         'Accept': 'application/json',
       },
@@ -805,8 +808,10 @@ document.addEventListener('DOMContentLoaded', () => {
       setOtpVerifyState(true);
       const response = await fetch('{{ route('user.verify.otp', [], false) }}', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrfToken,
           'X-XSRF-TOKEN': getXsrfToken(),
           'Accept': 'application/json',
         },
