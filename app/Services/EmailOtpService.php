@@ -25,6 +25,8 @@ class EmailOtpService
         int $ttlMinutes,
         ?string $recipientName = null,
     ): void {
+        $this->ensureProductionMailerIsReady();
+
         $normalizedEmail = $this->normalizeEmail($email);
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
@@ -49,6 +51,7 @@ class EmailOtpService
                 )
             );
         } catch (Throwable $exception) {
+            $request->session()->forget($this->pendingKey($purpose));
             report($exception);
 
             throw new DomainException(
@@ -209,6 +212,43 @@ class EmailOtpService
     private function normalizeEmail(string $email): string
     {
         return Str::lower(trim($email));
+    }
+
+    private function ensureProductionMailerIsReady(): void
+    {
+        if ((string) config('app.env') !== 'production') {
+            return;
+        }
+
+        $defaultMailer = (string) config('mail.default', 'log');
+
+        if (in_array($defaultMailer, ['log', 'array'], true)) {
+            throw new DomainException(
+                'Email delivery is not configured on the server yet. Please set the Render mail environment variables and deploy again.'
+            );
+        }
+
+        if ($defaultMailer !== 'smtp') {
+            return;
+        }
+
+        $smtpHost = trim((string) config('mail.mailers.smtp.host'));
+        $smtpUsername = trim((string) config('mail.mailers.smtp.username'));
+        $smtpPassword = trim((string) config('mail.mailers.smtp.password'));
+        $fromAddress = trim((string) config('mail.from.address'));
+
+        $smtpLooksPlaceholder = $smtpHost === ''
+            || in_array(Str::lower($smtpHost), ['127.0.0.1', 'localhost'], true)
+            || $smtpUsername === ''
+            || $smtpPassword === ''
+            || $fromAddress === ''
+            || $fromAddress === 'hello@example.com';
+
+        if ($smtpLooksPlaceholder) {
+            throw new DomainException(
+                'Email delivery is not fully configured on the server yet. Please complete the Render SMTP settings and deploy again.'
+            );
+        }
     }
 
     private function isExpired(mixed $timestamp): bool

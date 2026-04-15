@@ -76,4 +76,25 @@ class RegistrationEmailVerificationTest extends TestCase
         $this->assertNull(session('email_otp.registration.pending'));
         $this->assertNull(session('email_otp.registration.verified'));
     }
+
+    public function test_registration_otp_send_fails_cleanly_when_production_mail_is_not_configured(): void
+    {
+        config([
+            'app.env' => 'production',
+            'mail.default' => 'log',
+        ]);
+
+        $response = $this->postJson(route('register.email_otp.send'), [
+            'email' => 'mail-check@example.com',
+        ]);
+
+        $response
+            ->assertStatus(503)
+            ->assertJson([
+                'status' => false,
+                'message' => 'Email delivery is not configured on the server yet. Please set the Render mail environment variables and deploy again.',
+            ]);
+
+        $this->assertNull(session('email_otp.registration.pending'));
+    }
 }
