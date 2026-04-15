@@ -54,9 +54,7 @@ class EmailOtpService
             $request->session()->forget($this->pendingKey($purpose));
             report($exception);
 
-            throw new DomainException(
-                'We could not send the email right now. Please check your internet connection and try again.'
-            );
+            throw new DomainException($this->smtpFailureMessage($exception));
         }
     }
 
@@ -249,6 +247,36 @@ class EmailOtpService
                 'Email delivery is not fully configured on the server yet. Please complete the Render SMTP settings and deploy again.'
             );
         }
+    }
+
+    private function smtpFailureMessage(Throwable $exception): string
+    {
+        $message = Str::lower(trim($exception->getMessage()));
+
+        if ($message !== '') {
+            if (
+                str_contains($message, '535')
+                || str_contains($message, 'authentication')
+                || str_contains($message, 'auth')
+                || str_contains($message, 'username')
+                || str_contains($message, 'password')
+            ) {
+                return 'The server could not sign in to Gmail SMTP. Check the Render MAIL_USERNAME and Gmail App Password, then deploy again.';
+            }
+
+            if (
+                str_contains($message, 'connection could not be established')
+                || str_contains($message, 'connection timed out')
+                || str_contains($message, 'stream_socket_client')
+                || str_contains($message, 'network is unreachable')
+                || str_contains($message, 'connection refused')
+                || str_contains($message, 'could not connect')
+            ) {
+                return 'The server could not connect to Gmail SMTP. Check MAIL_HOST, MAIL_PORT, MAIL_SCHEME, and then redeploy the service.';
+            }
+        }
+
+        return 'The server could not send the email right now. Please check the Render mail settings and try again.';
     }
 
     private function isExpired(mixed $timestamp): bool

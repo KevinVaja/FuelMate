@@ -6,6 +6,7 @@ use App\EmailOtpCodeMail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use RuntimeException;
 use Tests\TestCase;
 
 class RegistrationEmailVerificationTest extends TestCase
@@ -93,6 +94,40 @@ class RegistrationEmailVerificationTest extends TestCase
             ->assertJson([
                 'status' => false,
                 'message' => 'Email delivery is not configured on the server yet. Please set the Render mail environment variables and deploy again.',
+            ]);
+
+        $this->assertNull(session('email_otp.registration.pending'));
+    }
+
+    public function test_registration_otp_send_surfaces_smtp_auth_failures_cleanly(): void
+    {
+        config([
+            'app.env' => 'production',
+            'mail.default' => 'smtp',
+            'mail.mailers.smtp.host' => 'smtp.gmail.com',
+            'mail.mailers.smtp.username' => 'fuelmate.web@gmail.com',
+            'mail.mailers.smtp.password' => 'app-password',
+            'mail.from.address' => 'fuelmate.web@gmail.com',
+        ]);
+
+        Mail::shouldReceive('to')
+            ->once()
+            ->with('mail-check@example.com')
+            ->andReturnSelf();
+
+        Mail::shouldReceive('send')
+            ->once()
+            ->andThrow(new RuntimeException('Expected response code "535" but got code "535", with message "535-5.7.8 Username and Password not accepted".'));
+
+        $response = $this->postJson(route('register.email_otp.send'), [
+            'email' => 'mail-check@example.com',
+        ]);
+
+        $response
+            ->assertStatus(503)
+            ->assertJson([
+                'status' => false,
+                'message' => 'The server could not sign in to Gmail SMTP. Check the Render MAIL_USERNAME and Gmail App Password, then deploy again.',
             ]);
 
         $this->assertNull(session('email_otp.registration.pending'));
